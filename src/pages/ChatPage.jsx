@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "../api/axios"; // your Axios instance
 import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 
 export default function ChatPage() {
   const [input, setInput] = useState("");
@@ -120,7 +121,24 @@ export default function ChatPage() {
                 : "mr-auto bg-green-100 text-left"
             }`}
           >
-            <p>{msg.content}</p>
+            <ReactMarkdown
+              components={{
+                p: ({ node, ...props }) => (
+                  <p className="mb-2 text-sm" {...props} />
+                ),
+                strong: ({ node, ...props }) => (
+                  <strong className="font-semibold" {...props} />
+                ),
+                ul: ({ node, ...props }) => (
+                  <ul className="list-disc list-inside mb-2" {...props} />
+                ),
+                li: ({ node, ...props }) => (
+                  <li className="ml-4 mb-1" {...props} />
+                ),
+              }}
+            >
+              {msg.content}
+            </ReactMarkdown>
             <p className="text-xs text-gray-500 mt-1">
               {new Date(msg.timestamp).toLocaleTimeString([], {
                 hour: "2-digit",
