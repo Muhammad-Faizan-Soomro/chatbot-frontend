@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 export default function ChatPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
   const bottomRef = useRef(null);
@@ -52,20 +53,33 @@ export default function ChatPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
+
+    // Clear input and disable while processing
+    const userInput = input;
+    setInput("");
+    setIsLoading(true);
+
+    const userMsg = {
+      role: "user",
+      content: userInput,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+
+    // Show "bot is typing..." dummy message
+    const typingMsg = {
+      role: "bot",
+      content: "Bot is typing...",
+      timestamp: new Date().toISOString(),
+      isTyping: true,
+    };
+    setMessages((prev) => [...prev, typingMsg]);
 
     try {
-      // Optimistically update UI
-      const userMsg = {
-        role: "user",
-        content: input,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, userMsg]);
-
       const res = await api.post(
         "/chat/",
-        { message: input },
+        { message: userInput },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -74,16 +88,21 @@ export default function ChatPage() {
         }
       );
 
-      const botMsg = {
-        role: "bot",
-        content: res.data.response,
-        timestamp: res.data.timestamp,
-      };
-
-      setMessages((prev) => [...prev, botMsg]);
-      setInput("");
+      // Remove "Bot is typing..." before adding actual response
+      setMessages((prev) => [
+        ...prev.slice(0, -1),
+        {
+          role: "bot",
+          content: res.data.response,
+          timestamp: res.data.timestamp,
+        },
+      ]);
     } catch (err) {
       console.error("Chat failed", err);
+      // Remove both user message and "bot is typing..."
+      setMessages((prev) => prev.slice(0, -2));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -121,12 +140,16 @@ export default function ChatPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSubmit(e)}
+          disabled={isLoading}
         />
         <button
           type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700"
+          className={`px-4 py-2 rounded-xl text-white ${
+            isLoading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+          }`}
+          disabled={isLoading}
         >
-          Send
+          {isLoading ? "Sending..." : "Send"}
         </button>
       </form>
     </div>
